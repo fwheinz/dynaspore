@@ -20,7 +20,7 @@ gentable: gentable.o
 	$(CC) gentable.o -o gentable
 
 clean:
-	rm -f $(OBJS) gentable.o char2id.h dynaspore
+	rm -f $(OBJS) gentable gentable.o char2id.h dynaspore
 
 run: dynaspore
 	./dynaspore -c6db -n4 -- -p1

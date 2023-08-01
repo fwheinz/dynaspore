@@ -26,7 +26,7 @@
 
 struct rtype rtypes[260];
 
-static int put_character_string (const unsigned char *data, int datalen, unsigned char *dst, int dstlen) {
+static int put_character_string (const unsigned char *data, int datalen, char *dst, int dstlen) {
 	int i, pos = 0;
 
 	if (dstlen < 3) {
@@ -65,7 +65,7 @@ static int put_character_string (const unsigned char *data, int datalen, unsigne
 	return pos;
 }
 
-static int get_character_string (const unsigned char *str, int strlen, unsigned char *dst, int dstlen) {
+static int get_character_string (const char *str, int strlen, char *dst, int dstlen) {
 	int restlen = strlen;
 	int pos = 0;
 	int i = 0;
@@ -106,44 +106,44 @@ static int get_character_string (const unsigned char *str, int strlen, unsigned 
 	return pos;
 }
 
-int create_a_record_content (char *rbuf, const char *content) {
+int create_a_record_content (unsigned char *rbuf, const char *content) {
 	if (inet_pton(AF_INET, content, rbuf))
 		return 4;
 	return -1;
 }
 
-int create_aaaa_record_content (char *rbuf, const char *content) {
+int create_aaaa_record_content (unsigned char *rbuf, const char *content) {
 	if (inet_pton(AF_INET6, content, rbuf))
 		return 16;
 	return -1;
 }
 
-int create_ns_record_content (char *rbuf, const char *content) {
+int create_ns_record_content (unsigned char *rbuf, const char *content) {
         if (!is_valid_dnsname(content))
             return -1;
-	char *ptr = name2lbl(rbuf, content);
+	unsigned char *ptr = name2lbl(rbuf, content);
 
 	return ptr - rbuf;
 }
 
-int create_cname_record_content (char *rbuf, const char *content) {
+int create_cname_record_content (unsigned char *rbuf, const char *content) {
         if (!is_valid_dnsname(content))
             return -1;
-	char *ptr = name2lbl(rbuf, content);
+	unsigned char *ptr = name2lbl(rbuf, content);
 
 	return ptr - rbuf;
 }
 
-int create_ptr_record_content (char *rbuf, const char *content) {
+int create_ptr_record_content (unsigned char *rbuf, const char *content) {
         if (!is_valid_dnsname(content))
             return -1;
-	char *ptr = name2lbl(rbuf, content);
+	unsigned char *ptr = name2lbl(rbuf, content);
 
 	return ptr - rbuf;
 }
 
 
-int create_mx_record_content (char *rbuf, const char *content, int prio) {
+int create_mx_record_content (unsigned char *rbuf, const char *content, int prio) {
 	const char *ptr = content;
 	if (prio < 0) { // This means, expect prio at start of content
 		while (*ptr && *ptr == ' ') ptr++;
@@ -158,13 +158,13 @@ int create_mx_record_content (char *rbuf, const char *content, int prio) {
 		ptr++;
         if (!is_valid_dnsname(ptr))
             return -1;
-	ptr = name2lbl(rbuf+2, ptr);
+	unsigned char *ptr2 = name2lbl(rbuf+2, ptr);
 
-	return ptr - rbuf;
+	return ptr2 - rbuf;
 }
 
-int create_txt_record_content (char *rbuf, const char *content) {
-	unsigned char *dst = (unsigned char *)rbuf;
+int create_txt_record_content (unsigned char *rbuf, const char *content) {
+	unsigned char *dst = rbuf;
 
 	char *decoded = alloca(strlen(content)+2);
 	int l = get_character_string(content, strlen(content), decoded, strlen(content)+2);
@@ -183,14 +183,14 @@ int create_txt_record_content (char *rbuf, const char *content) {
 		memcpy(dst+1, decoded, *dst);
 		decoded += *dst;
 		dst += *dst + 1;
-		if (((char*)dst - (char*) rbuf) > 2048)
+		if ((dst - rbuf) > 2048)
 			break;
 	}
 
-	return (char*)dst - (char*) rbuf;
+	return dst - rbuf;
 }
 
-int create_soa_record_content (char *rbuf, const char *content) {
+int create_soa_record_content (unsigned char *rbuf, const char *content) {
 	char *ptr = (char *)content;
 
 	while (*ptr && *ptr == ' ') ptr++;
@@ -214,21 +214,21 @@ int create_soa_record_content (char *rbuf, const char *content) {
 	if (ptr)
 		*ptr = '.';
 
-	ptr = rbuf;
+	unsigned char *rptr = rbuf;
         if (!is_valid_dnsname(mname) || !is_valid_dnsname(rname))
             return -1;
-	ptr = name2lbl(ptr, mname);
-	ptr = name2lbl(ptr, rname);
-	PUTINT(ptr) = htonl(serial); ptr += 4;   // SERIAL
-	PUTINT(ptr) = htonl(10800);  ptr += 4;   // REFRESH
-	PUTINT(ptr) = htonl(3600);   ptr += 4;   // RETRY
-	PUTINT(ptr) = htonl(604800); ptr += 4;   // EXPIRE
-	PUTINT(ptr) = htonl(3600);   ptr += 4;   // MINIMUM
+	rptr = name2lbl(rptr, mname);
+	rptr = name2lbl(rptr, rname);
+	PUTINT(rptr) = htonl(serial); rptr += 4;   // SERIAL
+	PUTINT(rptr) = htonl(10800);  rptr += 4;   // REFRESH
+	PUTINT(rptr) = htonl(3600);   rptr += 4;   // RETRY
+	PUTINT(rptr) = htonl(604800); rptr += 4;   // EXPIRE
+	PUTINT(rptr) = htonl(3600);   rptr += 4;   // MINIMUM
 
-	return ptr - rbuf;
+	return rptr - rbuf;
 }
 
-int create_srv_record_content (char *rbuf, const char *content, int prio) {
+int create_srv_record_content (unsigned char *rbuf, const char *content, int prio) {
 	char *ptr = (char *)content;
 
 	if (prio < 0) { // This means, expect prio at start of content
@@ -256,18 +256,18 @@ int create_srv_record_content (char *rbuf, const char *content, int prio) {
 	SKIP_WHITESPACE(ptr);
 	char *target = ptr;
 	
-	ptr = rbuf;
-	PUTSHORT(ptr) = htons(prio); ptr += 2;
-	PUTSHORT(ptr) = htons(atoi(weight)); ptr += 2;
-	PUTSHORT(ptr) = htons(atoi(port)); ptr += 2;
+	unsigned char *rptr = rbuf;
+	PUTSHORT(rptr) = htons(prio);         rptr += 2;
+	PUTSHORT(rptr) = htons(atoi(weight)); rptr += 2;
+	PUTSHORT(rptr) = htons(atoi(port));   rptr += 2;
         if (!is_valid_dnsname(target))
             return -1;
-	ptr = name2lbl(ptr, target);
+	rptr = name2lbl(rptr, target);
 
-	return ptr - rbuf;
+	return rptr - rbuf;
 }
 
-int create_ds_record_content (char *rbuf, const char *content) {
+int create_ds_record_content (unsigned char *rbuf, const char *content) {
 	const char *ptr = content, *b64;
 
 	SKIP_WHITESPACE(ptr);
@@ -282,16 +282,16 @@ int create_ds_record_content (char *rbuf, const char *content) {
 	ptr = strchr(ptr, ' '); if (!ptr) return -1; SKIP_WHITESPACE(ptr);
 	b64 = ptr;
 
-	char *ptr2 = rbuf;
-	PUTSHORT(ptr2) = htons(keytag); ptr2 += 2;
-	PUTCHAR (ptr2) = algorithm;       ptr2 += 1;
-	PUTCHAR (ptr2) = digest;        ptr2 += 1;
-	int dl = Base64decode(ptr2, b64); ptr2 += dl;
+	unsigned char *rptr = rbuf;
+	PUTSHORT(rptr) = htons(keytag); rptr += 2;
+	PUTCHAR (rptr) = algorithm;     rptr += 1;
+	PUTCHAR (rptr) = digest;        rptr += 1;
+	int dl = Base64decode(rptr, b64); rptr += dl;
 
-	return ptr2 - rbuf;
+	return rptr - rbuf;
 }
 
-int create_dnskey_record_content (char *rbuf, const char *content) {
+int create_dnskey_record_content (unsigned char *rbuf, const char *content) {
 	const char *ptr = content, *b64;
 
 	SKIP_WHITESPACE(ptr);
@@ -306,7 +306,7 @@ int create_dnskey_record_content (char *rbuf, const char *content) {
 	ptr = strchr(ptr, ' '); if (!ptr) return -1; SKIP_WHITESPACE(ptr);
 	b64 = ptr;
 
-	char *ptr2 = rbuf;
+	unsigned char *ptr2 = rbuf;
 	PUTSHORT(ptr2) = htons(keyflags); ptr2 += 2;
 	PUTCHAR (ptr2) = protocol;        ptr2 += 1;
 	PUTCHAR (ptr2) = algorithm;       ptr2 += 1;
@@ -315,9 +315,9 @@ int create_dnskey_record_content (char *rbuf, const char *content) {
 	return ptr2 - rbuf;
 }
 
-int create_nsec_record_content (char *rbuf, const char *content) {
+int create_nsec_record_content (unsigned char *rbuf, const char *content) {
 	char *ptr = (char*)content;
-	char *start = rbuf;
+	unsigned char *start = rbuf;
 
 	ptr = strchr(ptr, ' '); if (!ptr) return -1;
 	*ptr = '\0';
@@ -346,7 +346,7 @@ int create_nsec_record_content (char *rbuf, const char *content) {
 	return rbuf - start;
 }
 
-int create_rrsig_record_content (char *rbuf, const char *content) {
+int create_rrsig_record_content (unsigned char *rbuf, const char *content) {
 	char *ptr = (char *)content, *name, *b64;
 
 	SKIP_WHITESPACE(ptr);
@@ -380,23 +380,23 @@ int create_rrsig_record_content (char *rbuf, const char *content) {
 	ptr = strchr(ptr, ' '); if (!ptr) return -1; SKIP_WHITESPACE(ptr);
 	b64 = ptr;
 
-	ptr = rbuf;
-	PUTSHORT(ptr) = htons(type); ptr += 2;
-	PUTCHAR (ptr) = algorithm  ; ptr += 1;
-	PUTCHAR (ptr) = lbls       ; ptr += 1;
-	PUTINT  (ptr) = htonl(origttl)    ; ptr += 4;
-	PUTINT  (ptr) = htonl(sigexp)     ; ptr += 4;
-	PUTINT  (ptr) = htonl(siginc)     ; ptr += 4;
-	PUTSHORT(ptr) = htons(keytag)     ; ptr += 2;
+	unsigned char *rptr = rbuf;
+	PUTSHORT(rptr) = htons(type); rptr += 2;
+	PUTCHAR (rptr) = algorithm  ; rptr += 1;
+	PUTCHAR (rptr) = lbls       ; rptr += 1;
+	PUTINT  (rptr) = htonl(origttl)    ; rptr += 4;
+	PUTINT  (rptr) = htonl(sigexp)     ; rptr += 4;
+	PUTINT  (rptr) = htonl(siginc)     ; rptr += 4;
+	PUTSHORT(rptr) = htons(keytag)     ; rptr += 2;
         if (!is_valid_dnsname(name))
             return -1;
-	ptr = name2lbl(ptr, name);
-	int dl = Base64decode(ptr, b64); ptr += dl;
+	rptr = name2lbl(rptr, name);
+	int dl = Base64decode(rptr, b64); rptr += dl;
 
-	return ptr - rbuf;
+	return rptr - rbuf;
 }
 
-int create_record_content (char *rbuf, int type, const char *content, int prio) {
+int create_record_content (unsigned char *rbuf, int type, const char *content, int prio) {
 	switch (type) {
 		case  1: // A
 			return create_a_record_content(rbuf, content);
@@ -429,13 +429,13 @@ int create_record_content (char *rbuf, int type, const char *content, int prio) 
 	}
 }
 
-void create_record_data (diptr_t di, const char *name, int type, unsigned int ttl, char *data, int datalen) {
-	char *ptr;
+void create_record_data (diptr_t di, const char *name, int type, unsigned int ttl, unsigned char *data, int datalen) {
+	unsigned char *ptr;
 
 	int sz = datalen+12+strlen(name);
 	DI_GET(di)->record = x_realloc(DI_GET(di)->record, DI_GET(di)->recordlen+datalen+12+strlen(name));
 	ptr = DI_GET(di)->record + DI_GET(di)->recordlen;
-	char *origptr = ptr;
+	unsigned char *origptr = ptr;
 	ptr = name2lbl(ptr, name);
 	int namelen = ptr - origptr;
 	PUTSHORT(ptr) = htons(type);         ptr+=2; // TYPE
@@ -468,7 +468,7 @@ void create_record_data (diptr_t di, const char *name, int type, unsigned int tt
 }
 
 diptr_t create_record_raw (const char *name, int type, const char *content, unsigned int ttl, int prio) {
-	char rbuf[4096];
+	unsigned char rbuf[4096];
         
         if (!is_valid_dnsname(name)) {
             return NULL;
@@ -791,12 +791,12 @@ int retrieve_record_content(unsigned char *ptr, int type, int rdlength, char *bp
 	}
 }
 
-char *retrieve_record_data_dots (unsigned char *ptr, char *buf, int len, int dots) {
+unsigned char *retrieve_record_data_dots (unsigned char *ptr, char *buf, int len, int dots) {
 	char *bp = buf;
 	*bp = '\0'; len--;
 
-	unsigned char name[257];
-	int ll = lbl2name(get_string(&ptr), name, len);
+	char name[257];
+	int ll = lbl2name((unsigned char *)get_string(&ptr), name, len);
 	if (ll < 0)
 		return NULL;
 	unsigned short type = get_ushort(&ptr);
@@ -814,16 +814,16 @@ char *retrieve_record_data_dots (unsigned char *ptr, char *buf, int len, int dot
 	return ptr;
 }
 
-char *retrieve_record_data (unsigned char *ptr, char *buf, int len) {
+unsigned char *retrieve_record_data (unsigned char *ptr, char *buf, int len) {
     return retrieve_record_data_dots (ptr, buf, len, 1);
 }
 
-char *retrieve_record_data_axfr (unsigned char *ptr, char *buf, int len, unsigned char *pkt, int pktlen, struct record *r) {
+unsigned char *retrieve_record_data_axfr (unsigned char *ptr, char *buf, int len, unsigned char *pkt, int pktlen, struct record *r) {
 	char *bp = buf;
 	*bp = '\0'; len--;
 	unsigned char *pktend = pkt + pktlen;
 
-	unsigned char name[257];
+	char name[257];
 	int ll = lbl2name_compressed(&ptr, name, pkt, pktlen);
 	if (ll < 0)
 		return NULL;

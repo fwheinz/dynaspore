@@ -29,7 +29,6 @@ int datasource_mysql_fetch_zones(struct datasource *ds, const char *name, void *
         DEBUG(1, "%s: Error querying zones: %s\n", ds->driver, mysql_error(con));
         return 0;
     }
-    char lastzone[257] = "";
     time_t now = time(NULL);
     MYSQL_ROW row;
     struct zone *z = NULL;
@@ -170,12 +169,11 @@ static void mysql_insert_record(MYSQL *con, long domain_id, char *name,
     fields[4].buffer = &ttl;
     fields[4].buffer_length = sizeof (ttl);
 
-    my_bool isnull;
+    bool isnull = prio < 0;
     fields[5].buffer_type = MYSQL_TYPE_LONG;
     fields[5].buffer = &prio;
     fields[5].buffer_length = sizeof (prio);
     fields[5].is_null = &isnull;
-    isnull = (prio < 0);
 
     mysql_stmt_bind_param(stmt, fields);
     int st = mysql_stmt_execute(stmt);
@@ -199,7 +197,7 @@ static void mysql_save_zone_entry(diptr_t di, diptr_t parent, int subtree, void*
         return;
     }
 
-    char *ptr = di->record;
+    unsigned char *ptr = di->record;
     while (i--) {
         ptr = retrieve_record_data_dots(ptr, buf, sizeof (buf), 0);
         if (!ptr)
@@ -234,8 +232,6 @@ static void mysql_save_zone_entry(diptr_t di, diptr_t parent, int subtree, void*
 }
 
 int datasource_mysql_save_zones(struct datasource *ds, struct zone *z, void *arg) {
-    int nr = 0;
-
     MYSQL *con = ds->priv;
     if (!con)
         return 0;
@@ -341,8 +337,6 @@ static int mysql_remove_key_entries(MYSQL *con, long id) {
 }
 
 int datasource_mysql_save_keys(struct datasource *ds, struct zone *z, void *arg) {
-    int nr = 0, i;
-
     MYSQL *con = ds->priv;
     if (!con)
         return 0;
@@ -353,7 +347,7 @@ int datasource_mysql_save_keys(struct datasource *ds, struct zone *z, void *arg)
     mysql_remove_key_entries(ds->priv, id);
 
     char str[8192];
-    for (i = 0; i < z->nrkeys; i++) {
+    for (int i = 0; i < z->nrkeys; i++) {
         struct dnskey *dnskey = z->keys[i];
         export_rsa_key(dnskey, str, sizeof (str));
         mysql_insert_key(con, id, dnskey->keyflags, dnskey->active, str);

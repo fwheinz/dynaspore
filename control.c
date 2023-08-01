@@ -76,7 +76,6 @@ __thread char sid[256];
 
 static void _handle_connection (FILE *sock) {
 	char buf[4096], *req, line[4096];
-	int len;
 
 	DEBUG(3, "New connection, reading...\n");
 	req = fgets(buf, sizeof(buf), sock);

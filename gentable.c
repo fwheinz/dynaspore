@@ -7,7 +7,7 @@
 
 int main (int argc, char **argv) {
     unsigned char table[256];
-    unsigned char *order = argv[1];
+    char *order = argv[1];
     int labelsep = 0, wildcard = 0;
     memset(table, 0xff, sizeof(table));
 
@@ -41,7 +41,7 @@ int main (int argc, char **argv) {
     }
 
     for (int i = 0; i < strlen(order); i++) {
-        table[order[i]] = i;
+        table[(int)order[i]] = i;
         table[order[i]|0x20] = i;
         if (order[i] == '.')
             labelsep = i;

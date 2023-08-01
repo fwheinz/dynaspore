@@ -160,8 +160,6 @@ int datasource_zoneload(lua_State *L) {
 }
 
 int datasource_zonesave(lua_State *L) {
-    int ret = 0;
-
     if ((lua_gettop(L) != 2) || !lua_istable(L, 1))
         return 0;
 
@@ -273,8 +271,6 @@ int datasource_keyload(lua_State *L) {
 }
 
 int datasource_keysave(lua_State *L) {
-    int ret = 0;
-
     if ((lua_gettop(L) != 2) || !lua_istable(L, 1))
         return 0;
 
@@ -311,8 +307,6 @@ int datasource_keysave(lua_State *L) {
 }
 
 int datasource_ops(lua_State *L) {
-    int ret = 0;
-
     if ((lua_gettop(L) != 1) || !lua_istable(L, 1))
         return 0;
 
@@ -323,7 +317,7 @@ int datasource_ops(lua_State *L) {
 
     lua_pushstring(L, "dsname");
     lua_rawget(L, 1);
-    const char *dsname = lua_tostring(L, -1);
+    lua_tostring(L, -1); // dsname
     lua_pop(L, 1);
 
     struct datasource *ds = datasource_find(driver);
@@ -347,8 +341,6 @@ int datasource_ops(lua_State *L) {
 }
 
 int datasource_index(lua_State *L) {
-    const char *key = luaL_checkstring(L, 2);
-
     lua_newtable(L);
     xl_tablefunction(L, "zoneload", datasource_zoneload);
     xl_tablefunction(L, "keyload", datasource_keyload);
@@ -460,10 +452,10 @@ int record_index(lua_State *L) {
         diptr_t di = maketree(root, r->name, type2id(r->type), 0);
         if (!di || di->nrrecords < r->index)
             return 0;
-        unsigned char *ptr = skip_records(di->record, r->index - 1);
+        unsigned char *rp = skip_records(di->record, r->index - 1);
         if (!strcmp(name, "content") || !strcmp(name, "record")) {
-            char rec[100000];
-            retrieve_record_data(ptr, rec, sizeof (rec));
+            char rec[100000], *ptr;
+            retrieve_record_data(rp, rec, sizeof (rec));
             if (*name == 'c') { // We want content, not record
                 ptr = skip_word(rec); // Skip over name
                 ptr = skip_word(ptr); // Skip over ttl
@@ -479,9 +471,9 @@ int record_index(lua_State *L) {
                 return 0;
             }
         } else if (!strcmp(name, "ttl")) {
-            get_string(&ptr);
-            ptr += 4;
-            unsigned int ttl = get_uint(&ptr);
+            get_string(&rp);
+            rp += 4;
+            unsigned int ttl = get_uint(&rp);
             lua_pushnumber(L, ttl);
             return 1;
         } else {
@@ -535,7 +527,7 @@ int record_newindex(lua_State *L) {
                     srecord = skip_records(srecord, 1);
                     if (!value)
                         continue;
-                    char content[4096];
+                    unsigned char content[4096];
                     int contentlen = create_record_content(content, r->type, value, -1);
                     if (contentlen <= 0)
                         continue;
@@ -576,7 +568,7 @@ int record_newindex(lua_State *L) {
                     nrrecords++;
                     ss.nrrecords++;
                 } else {
-                    int nl = strlen(record) + 1;
+                    int nl = strlen((char*)record) + 1;
                     unsigned char *ptr = record + nl;
                     unsigned short rdlength = ptr[8]*256 + ptr[9];
                     int ll = rdlength + nl + 10;
@@ -610,9 +602,9 @@ int record_newindex(lua_State *L) {
             return 0;
         }
         unsigned int ttl = strtoul(value, NULL, 10);
-        char *rec = skip_records(di->record, r->index - 1);
-        char *srec = skip_records(di->shortrecord, r->index - 1);
-        rec += strlen(rec) + 5;
+        unsigned char *rec = skip_records(di->record, r->index - 1);
+        unsigned char *srec = skip_records(di->shortrecord, r->index - 1);
+        rec += strlen((char*)rec) + 5;
         PUTINT(rec) = htonl(ttl);
         srec += 6;
         PUTINT(srec) = htonl(ttl);
@@ -773,7 +765,7 @@ static int dnskeyrr(lua_State *L) {
     if (!dnskey)
         return 0;
 
-    char content[8192];
+    unsigned char content[8192];
     int len = dnssec_get_dnskeyrr(&dnskey->key, content, sizeof (content));
     if (len <= 0)
         return 0;
@@ -796,7 +788,7 @@ static int dsrr(lua_State *L) {
     if (!name)
         return 0;
 
-    char content[8192];
+    unsigned char content[8192];
     int len = dnssec_get_dsrr_from_dnskey(name, &dnskey->key, content, sizeof (content));
     if (len <= 0)
         return 0;
@@ -1859,7 +1851,7 @@ LUA_FUNCTION(treewalk) {
         lua_newtable(L);
         i = 1;
         int nr = pos->nrrecords;
-        char *record = pos->record;
+        unsigned char *record = pos->record;
         while (nr--) {
             char rd[2048];
             record = retrieve_record_data(record, rd, sizeof (rd));

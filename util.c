@@ -158,17 +158,17 @@ const char *inttype2typestr(int type) {
     return "UNK";
 }
 
-char *name2lbl(char *target, const char *domain) {
+unsigned char *name2lbl(unsigned char *target, const char *domain) {
     assert(is_valid_dnsname(domain));
     
     if (!strlen(domain)) {
         target[0] = '\0';
         return target;
     }
-    strcpy(target + 1, domain);
-    if (target[strlen(target + 1)] == '.')
-        target[strlen(target + 1)] = '\0';
-    unsigned char *ptr = (unsigned char *) target;
+    strcpy((char *) target + 1, domain);
+    if (target[strlen((char*)target + 1)] == '.')
+        target[strlen((char*)target + 1)] = '\0';
+    unsigned char *ptr = target;
     do {
         unsigned char *lptr = ptr++;
         *lptr = 0;
@@ -180,12 +180,11 @@ char *name2lbl(char *target, const char *domain) {
         }
     } while (*ptr);
 
-    return (char*) ptr + 1;
+    return ptr + 1;
 }
 
 int lbl2name(unsigned char *lbl, char *name, int maxlen) {
-    int len = 0, i;
-    unsigned int *x = (void*) name;
+    int len = 0;
 
     if (!*lbl)
         return 1;
@@ -268,8 +267,7 @@ char noop(unsigned char ch) {
 }
 
 int lbl2name2(unsigned char *lbl, char *name, int maxlen) {
-    int len = 0, i;
-    unsigned int *x = (void*) name;
+    int len = 0;
 
     if (!*lbl)
         return 1;
@@ -286,7 +284,7 @@ int lbl2name2(unsigned char *lbl, char *name, int maxlen) {
         if (len > maxlen)
             return -2;
         ch = 0;
-        for (i = 1; i <= l; i++) {
+        for (int i = 1; i <= l; i++) {
             ch += name[i]&0xf;
         }
         if (l <= 1)
@@ -298,14 +296,14 @@ int lbl2name2(unsigned char *lbl, char *name, int maxlen) {
     return len + 1;
 }
 
-int name2name2(unsigned char *name, unsigned char *target, int maxlen) {
-    char *tmp = alloca(strlen(name) + 2);
+int name2name2(char *name, char *target, int maxlen) {
+    unsigned char *tmp = alloca(strlen(name) + 2);
     name2lbl(tmp, name);
     return lbl2name2(tmp, target, maxlen);
 }
 
 int nrlbls(unsigned char *lbl) {
-    int len = strlen(lbl);
+    int len = strlen((char*)lbl);
     int ret = 0;
 
     while (*lbl) {

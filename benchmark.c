@@ -56,7 +56,6 @@ int make_dns_packet(struct rte_ipv4_hdr *ip) {
             printf("Invalid type: '%s'\n", ptr);
             return -1;
         }
-        int paylen = 16;
         memcpy(payload,
                         "\x31\x37"
                         "\x00\x00"
@@ -67,14 +66,14 @@ int make_dns_packet(struct rte_ipv4_hdr *ip) {
                         , 12);
         char line2[1024];
         strcpy(line2, line);
-        ptr = name2lbl(payload+12, line);
-        memcpy(ptr, "\x00\x01\x00\x01", 4);
-        ptr[1] = type;
-        ptr += 4;
-        memcpy(ptr, "\x00\x00\x29\x10\x00\x80\x00\x00\x00\x00\x00", 11);
-        ptr += 11;
+        unsigned char *rptr = name2lbl(payload+12, line);
+        memcpy(rptr, "\x00\x01\x00\x01", 4);
+        rptr[1] = type;
+        rptr += 4;
+        memcpy(rptr, "\x00\x00\x29\x10\x00\x80\x00\x00\x00\x00\x00", 11);
+        rptr += 11;
 
-        int udplen = (char*)ptr - (char*)udp;
+        int udplen = rptr - (unsigned char*)udp;
         udp->dgram_len = htons(udplen); // TODO
         ip->total_length = htons(udplen+sizeof(struct rte_ipv4_hdr)); // TODO
         ip->hdr_checksum = 0;
@@ -93,8 +92,8 @@ unsigned char **prepare_pkts (void) {
                 unsigned char *buf = malloc(PKTSIZE);
 
                 struct rte_ether_hdr *e = (void*)buf;
-                rte_eth_macaddr_get(0, &e->s_addr);
-                memcpy(e->d_addr.addr_bytes, "\x00\x1b\x21\x81\x54\xb8", 6);
+                rte_eth_macaddr_get(0, &e->src_addr);
+                memcpy(e->dst_addr.addr_bytes, "\x00\x1b\x21\x81\x54\xb8", 6);
 //              memcpy(e->d_addr.addr_bytes, "\x00\x60\xdd\x46\x76\xf2", 6); // ns1
                 e->ether_type = 0x0008;
 

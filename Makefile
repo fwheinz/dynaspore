@@ -2,7 +2,7 @@ CC=gcc
 
 LIBS=mysqlclient libdpdk lua5.3 libcrypto libssl
 
-WARN=-Wall -Wno-address-of-packed-member -Wno-pointer-sign -Wno-sign-compare -Wno-unused-variable
+WARN=-Wall -Wno-address-of-packed-member -Wno-deprecated-declarations
 CFLAGS += $$(pkg-config --cflags $(LIBS)) $(WARN) -O3 -march=native -mtune=native -fno-strict-aliasing -fomit-frame-pointer -flto -falign-loops=8 -ggdb
 LDFLAGS += -lpthread $$(pkg-config --libs $(LIBS))
 

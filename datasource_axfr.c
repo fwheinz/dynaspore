@@ -9,7 +9,7 @@
 
 #include "xfc.h"
 
-static int axfr_parse(const char *name, char *buf, int len, int *nrrec) {
+static int axfr_parse(const char *name, unsigned char *buf, int len, int *nrrec) {
     if (len < 12) {
         DEBUG(1, "AXFR: Invalid length %d\n", len);
         return -1;
@@ -26,12 +26,12 @@ static int axfr_parse(const char *name, char *buf, int len, int *nrrec) {
     ptr += 2;
     int ancount = ntohs(GETSHORT(ptr));
     ptr += 2;
-    int nscount = ntohs(GETSHORT(ptr));
+    ntohs(GETSHORT(ptr)); // nscount
     ptr += 2;
-    int arcount = ntohs(GETSHORT(ptr));
+    ntohs(GETSHORT(ptr)); // arcount
     ptr += 2;
 
-    char *pkt = buf;
+    unsigned char *pkt = buf;
 
     if (qdcount > 1)
         return -1;
@@ -44,8 +44,8 @@ static int axfr_parse(const char *name, char *buf, int len, int *nrrec) {
             return -1;
         }
 
-        int qtype = get_ushort(&ptr);
-        int qclass = get_ushort(&ptr);
+        get_ushort(&ptr); // qtype
+        get_ushort(&ptr); // qclass
     }
 
     char record[100000];
@@ -64,7 +64,7 @@ static int axfr_parse(const char *name, char *buf, int len, int *nrrec) {
             return 1;
         }
         (*nrrec)++;
-        diptr_t x = create_record_from_line(record);
+        create_record_from_line(record);
     }
 
     return 0;
@@ -112,7 +112,7 @@ static int axfr_connect(const char *hostname, const char *port) {
             close(fd);
             continue;
         }
-        int err, errlen = sizeof (err);
+        unsigned int err, errlen = sizeof (err);
         getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &errlen);
         if (err) {
             DEBUG(2, "Connect to %s/%s failed: %s\n", hostname, port, strerror(errno));
@@ -128,7 +128,7 @@ static int axfr_connect(const char *hostname, const char *port) {
 }
 
 static void send_axfr_request(int fd, const char *name) {
-    char buf[1024], *ptr = buf;
+    unsigned char buf[1024], *ptr = buf;
 
     /* Send the AXFR Request */
 
@@ -192,7 +192,7 @@ static int parse_axfr_msg(int fd, const char *name, int *nrrec) {
     rlen = ntohs(rlen);
 
 
-    char *reply = alloca(rlen);
+    unsigned char *reply = alloca(rlen);
     int received = 0;
     do {
         st = read(fd, reply + received, rlen - received);
@@ -221,8 +221,6 @@ static int parse_axfr_msg(int fd, const char *name, int *nrrec) {
 }
 
 int datasource_axfr_fetch_zones(struct datasource *ds, const char *name, void *arg) {
-    int nr = 0;
-
     if (!is_valid_dnsname(name))
         return 0;
 

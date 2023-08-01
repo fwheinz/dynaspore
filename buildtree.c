@@ -174,7 +174,6 @@ diptr_t maketree(diptr_t pos, const char *_name, int typeid, int store) {
     int wildcard = 0;
     int treedepth = 1;
     struct zone *curzone = NULL;
-    diptr_t soa;
 
     if (*name == '*') { // Wildcard entry?
         wildcard = 1;

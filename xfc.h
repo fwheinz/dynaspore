@@ -66,7 +66,7 @@ struct di {
     unsigned char nrrecords;
     unsigned char has_soa : 1, has_ns : 1, has_wc : 1, has_cname : 1, padding:4;
     dich_t ch[40 + (T_LAST - T_FIRST)];
-    char *record, *shortrecord;
+    unsigned char *record, *shortrecord;
     int recordlen, shortrecordlen;
     unsigned int nrreq;
     struct zone *zone;
@@ -132,21 +132,6 @@ int remove_records_by_type(diptr_t di, unsigned long type);
 
 char id2char(int id);
 
-static inline int char2id4 (unsigned char ch) {
-    static char table[256] = {0};
-
-    if (!table[0]) {
-        unsigned char *order = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.*_-";
-        memset(table, 0xff, sizeof(table));
-        for (int i = 0; i < strlen(order); i++) {
-            table[order[i]] = i;
-            table[order[i]|0x20] = i;
-        }
-    }
-
-    return table[ch];
-}
-
 #include "char2id.h"
 static inline int char2id (unsigned char ch) {
 	return ((signed char *) CHAR2IDTABLE)[ch];
@@ -209,14 +194,14 @@ int lbl2name(unsigned char *lbl, char *name, int maxlen);
 int lbl2name_fast(unsigned char *lbl, char *name, int maxlen);
 int lbl2name_compressed(unsigned char **lbl, char *name, unsigned char *pkt, int pktlen);
 int lbl2name2(unsigned char *lbl, char *name, int maxlen);
-char *name2lbl(char *target, const char *domain);
+unsigned char *name2lbl(unsigned char *target, const char *domain);
 int nrlbls(unsigned char *lbl);
 
 extern char *aux_buf;
 extern int aux_buflen;
 
 typedef struct {
-    char data[1024];
+    unsigned char data[1024];
     int len;
 } db_t;
 
@@ -261,11 +246,11 @@ struct serverstats {
 
 extern struct serverstats ss;
 
-void create_record_data(diptr_t di, const char *name, int type, unsigned int ttl, char *data, int datalen);
+void create_record_data(diptr_t di, const char *name, int type, unsigned int ttl, unsigned char *data, int datalen);
 diptr_t create_record_from_line(const char *line);
-int create_rrsig_record_content(char *rbuf, const char *content);
-int create_dnskey_record_content(char *rbuf, const char *content);
-int create_record_content(char *rbuf, int type, const char *content, int prio);
+int create_rrsig_record_content(unsigned char *rbuf, const char *content);
+int create_dnskey_record_content(unsigned char *rbuf, const char *content);
+int create_record_content(unsigned char *rbuf, int type, const char *content, int prio);
 unsigned char *skip_records(unsigned char *ptr, int nr);
 void reprocess_zone(struct zone *z);
 void reprocess_zone_forced(struct zone *z);
@@ -331,7 +316,7 @@ struct xl_dnskey {
     struct dnskey key;
 };
 
-int getpubkey(struct dnskey *k, char *buf, int len);
+int getpubkey(struct dnskey *k, unsigned char *buf, int len);
 int gen_rsa_key(int flags, int bits, struct dnskey *dnskey);
 int parse_rsa_key(int keyflags, const char *key, struct dnskey *dnskey);
 int parse_dnssec_key(int keyflags, const char *key, struct dnskey *dnskey);
@@ -340,9 +325,9 @@ int export_rsa_key(struct dnskey *key, char *buf, int len);
 
 void sign_zone(struct zone *z);
 int Base64encode_len(int len);
-int Base64encode(char * coded_dst, const char *plain_src, int len_plain_src);
+int Base64encode(char * coded_dst, const unsigned char *plain_src, int len_plain_src);
 int Base64decode_len(const char * coded_src);
-int Base64decode(char * plain_dst, const char *coded_src);
+int Base64decode(unsigned char * plain_dst, const char *coded_src);
 
 
 void *xl_malloc(void *state, int type, int len);
@@ -412,14 +397,14 @@ static inline void put_uchar(unsigned char **pptr, unsigned char v) {
 }
 
 static inline char *get_string(unsigned char **pptr) {
-    unsigned char *ptr = *pptr;
+    char *ptr = (char*)*pptr;
     *pptr += strlen(ptr) + 1;
 
     return ptr;
 }
 
 static inline void put_string(unsigned char **pptr, char *string) {
-    strcpy(*pptr, string);
+    strcpy((char*)*pptr, string);
     *pptr += strlen(string) + 1;
 }
 
@@ -479,9 +464,9 @@ const char *xl_getstring(void *context, char *key);
 int xl_getnumber(void *context, char *key, int *valid);
 void xl_error(void *context, char *error);
 
-char *retrieve_record_data(unsigned char *ptr, char *buf, int len);
-char *retrieve_record_data_dots(unsigned char *ptr, char *buf, int len, int dots);
-char *retrieve_record_data_axfr(unsigned char *ptr, char *buf, int len, unsigned char *pkt, int pktlen, struct record *r);
+unsigned char *retrieve_record_data(unsigned char *ptr, char *buf, int len);
+unsigned char *retrieve_record_data_dots(unsigned char *ptr, char *buf, int len, int dots);
+unsigned char *retrieve_record_data_axfr(unsigned char *ptr, char *buf, int len, unsigned char *pkt, int pktlen, struct record *r);
 int retrieve_record_content(unsigned char *ptr, int type, int rdlength, char *bp, int len, unsigned char *pkt, int pktlen, int dots);
 
 struct zone *fetch_zone(const char *name, int create);

@@ -88,7 +88,7 @@ static int storebignumb64(const BIGNUM *a, char *buf, int len) {
     int l = Base64encode_len(BN_num_bytes(a));
     if (l > len)
         return -1;
-    char tmp[BN_num_bytes(a)];
+    unsigned char tmp[BN_num_bytes(a)];
     l = BN_bn2bin(a, tmp);
     l = Base64encode(buf, tmp, l);
 
@@ -107,7 +107,7 @@ static char *algostr(int algo) {
 }
 
 int export_rsa_key(struct dnskey *key, char *buf, int len) {
-    char *ptr = buf, *end = buf + len;
+    char *ptr = buf;
 
     const BIGNUM *n, *e, *d, *p, *q, *dmp1, *dmq1, *iqmp;
     RSA_get0_key(key->rsa, &n, &e, &d);
@@ -189,7 +189,7 @@ int gen_rsa_key(int flags, int bits, struct dnskey *key) {
     lua_unlock();
     int st = RSA_generate_key_ex(rsa, bits, e, NULL);
     if (st == 1) {
-        const BIGNUM *n, *e, *d, *p, *q, *dmp1, *dmq1, *iqmp;
+        const BIGNUM *n, *e, *d, *p, *q;
         RSA_get0_key(rsa, &n, &e, &d);
         RSA_get0_factors(rsa, &p, &q);
         key->rsa = rsa;
@@ -211,9 +211,9 @@ int gen_rsa_key(int flags, int bits, struct dnskey *key) {
     return st;
 }
 
-int getpubkey(struct dnskey *k, char *buf, int len) {
+int getpubkey(struct dnskey *k, unsigned char *buf, int len) {
     int lfl = 1;
-    char *ptr = buf;
+    unsigned char *ptr = buf;
 
     if (k->publicexponent.len >= 256)
         lfl = 3;
@@ -239,8 +239,8 @@ int getpubkey(struct dnskey *k, char *buf, int len) {
 int recordless(unsigned char *r1, unsigned char *r2) {
     unsigned char *ptr1 = r1;
     unsigned char *ptr2 = r2;
-    ptr1 += strlen(ptr1) + 1; // Skip over owner
-    ptr2 += strlen(ptr2) + 1; // Skip over owner
+    ptr1 += strlen((char*)ptr1) + 1; // Skip over owner
+    ptr2 += strlen((char*)ptr2) + 1; // Skip over owner
     int l1 = ptr1[8]*256 + ptr1[9];
     int l2 = ptr2[8]*256 + ptr2[9];
     int i, l = l1;
@@ -279,7 +279,7 @@ void sign_record(diptr_t rec, struct dnskey *key) {
     unsigned char *ptr = rrset;
     for (i = 0; i < nrrec; i++) {
         records[i] = ptr;
-        ptr = ptr + strlen(ptr) + 1; // Skip over NAME
+        ptr = ptr + strlen((char*)ptr) + 1; // Skip over NAME
         unsigned int ttl = ptr[4] << 24 | ptr[5] << 16 | ptr[6] << 8 | ptr[7];
         if (ttl < origttl)
             origttl = ttl;
@@ -291,7 +291,7 @@ void sign_record(diptr_t rec, struct dnskey *key) {
     // set the ttl value of the pseudorecords
     for (i = 0; i < nrrec; i++) {
         ptr = records[i];
-        ptr = ptr + strlen(ptr) + 5; // Skip over NAME, TYPE, CLASS
+        ptr = ptr + strlen((char*)ptr) + 5; // Skip over NAME, TYPE, CLASS
         PUTINT(ptr) = htonl(origttl);
     }
 
@@ -339,7 +339,7 @@ void sign_record(diptr_t rec, struct dnskey *key) {
     ptr = name2lbl(ptr, zonename);
     for (i = 0; i < nrrec; i++) {
         unsigned char *rr = recordssorted[i];
-        unsigned char *tmp = rr + strlen(rr) + 9;
+        unsigned char *tmp = rr + strlen((char*)rr) + 9;
         int rdlength = tmp[0]*256 + tmp[1];
         tmp += rdlength + 2;
         memcpy(ptr, rr, (tmp - rr));
@@ -349,16 +349,17 @@ void sign_record(diptr_t rec, struct dnskey *key) {
     SHA256_CTX md;
     SHA256_Init(&md);
     SHA256_Update(&md, ss, sslen);
-    char digest[SHA256_DIGEST_LENGTH];
+    unsigned char digest[SHA256_DIGEST_LENGTH];
 
-    char signature[1000];
-    int siglen = sizeof (signature);
+    unsigned char signature[1000];
+    unsigned int siglen = sizeof (signature);
     SHA256_Final(digest, &md);
     RSA_sign(NID_sha256, digest, SHA256_DIGEST_LENGTH, signature, &siglen, key->rsa);
     char b64[1000];
     Base64encode(b64, signature, siglen);
 
-    char str[4096], data[4096];
+    char str[4096];
+    unsigned char data[4096];
     snprintf(str, sizeof (str), "%s %u %u %u %u %u %u %s. %s", type2typestr(type),
             algo, lbls, origttl, sigexp, siginc, keytag, zonename, b64);
 
@@ -419,7 +420,7 @@ void sign_zone(struct zone *z) {
 }
 
 static int deploy_key(struct zone *z, struct dnskey *key) {
-    char rbuf[4096];
+    unsigned char rbuf[4096];
 
     int len = getpubkey(key, rbuf, sizeof (rbuf));
     if (len == 0) {
@@ -433,7 +434,7 @@ static int deploy_key(struct zone *z, struct dnskey *key) {
     snprintf(content, sizeof (content), "%d %d %d %s", key->keyflags, 3, key->algo, b64key);
 
     DEBUG(3, "Deployed: %s IN DNSKEY %s\n", z->name, content);
-    diptr_t dnskeyrr = create_record((char *) z->name, "DNSKEY", content, "3600", NULL);
+    create_record((char *) z->name, "DNSKEY", content, "3600", NULL);
 
     return 1;
 }
@@ -596,8 +597,8 @@ static int dnssec_get_dsrr_from_dnskeyrr(const char *name, unsigned char *dnskey
     if (rbuflen < 4 + SHA256_DIGEST_LENGTH)
         return -1;
 
-    char lbl[257];
-    char *ptr = name2lbl(lbl, name);
+    unsigned char lbl[257];
+    unsigned char *ptr = name2lbl(lbl, name);
 
     SHA256_CTX md;
     SHA256_Init(&md);
@@ -605,9 +606,9 @@ static int dnssec_get_dsrr_from_dnskeyrr(const char *name, unsigned char *dnskey
     SHA256_Update(&md, dnskeyrr, rrlen);
 
     unsigned short kt = keytag(dnskeyrr, rrlen);
-    unsigned short flags = get_ushort(&dnskeyrr);
-    unsigned char protocol = get_uchar(&dnskeyrr);
-    unsigned char algorithm = get_uchar(&dnskeyrr);
+    get_ushort(&dnskeyrr); // flags
+    get_uchar(&dnskeyrr); // protocol
+    unsigned char algorithm = get_uchar(&dnskeyrr); // algorithm
 
     put_ushort(&rbuf, kt);
     put_uchar(&rbuf, algorithm);
@@ -628,7 +629,7 @@ int dnssec_get_dsrr_from_dnskey(const char *name, struct dnskey *dnskey, unsigne
 }
 
 static int dnssec_calc_keytag(struct dnskey *key) {
-    char rbuf[4096];
+    unsigned char rbuf[4096];
 
     int rdlength = dnssec_get_dnskeyrr(key, rbuf, sizeof (rbuf));
     key->keytag = keytag(rbuf, rdlength);

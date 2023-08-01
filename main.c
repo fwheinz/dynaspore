@@ -78,7 +78,6 @@ static volatile struct app_stats {
 static const struct rte_eth_conf port_conf_default = {
     .rxmode = {
         .mq_mode = ETH_MQ_RX_RSS,
-        .max_rx_pkt_len = RTE_ETHER_MAX_LEN,
         .offloads = DEV_RX_OFFLOAD_IPV4_CKSUM
     },
     .txmode = {
@@ -206,12 +205,12 @@ print_stats(void)
 
 #define MAXADDRS 20
 
-int ipv4_addresses[MAXADDRS];
+unsigned int ipv4_addresses[MAXADDRS];
 char ipv6_addresses[MAXADDRS][16];
 
 
 // Check, if the given IPv4 address is configured
-static int ipv4_address_configured (int ip) {
+static int ipv4_address_configured (unsigned int ip) {
     lua_ipv4_address_transfer(ipv4_addresses, MAXADDRS);
 
     for (int i = 0; i < MAXADDRS; i++) {
@@ -300,8 +299,8 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
             a->arp_opcode = htons(RTE_ARP_OP_REPLY);
             memcpy(&a->arp_data.arp_tha, &a->arp_data.arp_sha, sizeof(a->arp_data.arp_tha));
             rte_eth_macaddr_get(buf->port, &a->arp_data.arp_sha);
-            rte_ether_addr_copy(&e->s_addr, &e->d_addr);
-            rte_eth_macaddr_get(buf->port, &e->s_addr);
+            rte_ether_addr_copy(&e->src_addr, &e->dst_addr);
+            rte_eth_macaddr_get(buf->port, &e->src_addr);
             buf->hash.usr = 0x01;
         }
     } else if (e->ether_type == 0xDD86) {
@@ -315,8 +314,8 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
                 // We got a neighbor solicitation
                 char *payload = (void*)((char*)icmp+sizeof(struct rte_icmp_hdr));
                 if (ipv6_address_configured(payload)) {
-                    rte_ether_addr_copy(&e->s_addr, &e->d_addr);
-                    rte_eth_macaddr_get(buf->port, &e->s_addr);
+                    rte_ether_addr_copy(&e->src_addr, &e->dst_addr);
+                    rte_eth_macaddr_get(buf->port, &e->src_addr);
                     
                     memcpy(ip->dst_addr, ip->src_addr, sizeof(ip->dst_addr));
                     memcpy(ip->src_addr, payload, sizeof(ip->src_addr));
@@ -341,20 +340,18 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
                 return;
             struct rte_udp_hdr *udp = (void*)((unsigned char *)ip+sizeof(*ip));
             if (udp->dst_port == htons(53)) {
-                rte_ether_addr_copy(&e->s_addr, &e->d_addr);
-                rte_eth_macaddr_get(buf->port, &e->s_addr);
+                rte_ether_addr_copy(&e->src_addr, &e->dst_addr);
+                rte_eth_macaddr_get(buf->port, &e->src_addr);
                 udp->dst_port = udp->src_port;
                 udp->src_port = htons(53);
                 char tmp[16];
                 memcpy(tmp, ip->src_addr, sizeof(tmp));
                 memcpy(ip->src_addr, ip->dst_addr, sizeof(ip->src_addr));
                 memcpy(ip->dst_addr, tmp, sizeof(ip->dst_addr));
-                buf->ol_flags = PKT_TX_IPV6 | PKT_TX_UDP_CKSUM;
+                buf->ol_flags = RTE_MBUF_F_TX_IPV6 | RTE_MBUF_F_TX_UDP_CKSUM;
                 buf->l2_len = sizeof(struct rte_ether_hdr);
                 buf->l3_len = sizeof(struct rte_ipv6_hdr);
                 buf->l4_len = sizeof(struct rte_udp_hdr);
-                void *payload = (void*)((unsigned char*)udp+sizeof(struct rte_udp_hdr));
-                int paylen = htons(ip->payload_len) - sizeof(struct rte_udp_hdr);
                 buf->hash.usr = 0x00;
             }
         } else if (ip->proto == IPPROTO_TCP) {
@@ -362,8 +359,8 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
             struct rte_tcp_hdr *tcp = (void*)((unsigned char *)ip+sizeof(*ip));
             if (tcp->dst_port == htons(53)) {
                 // Prepare L2-Header
-                rte_ether_addr_copy(&e->s_addr, &e->d_addr);
-                rte_eth_macaddr_get(buf->port, &e->s_addr);
+                rte_ether_addr_copy(&e->src_addr, &e->dst_addr);
+                rte_eth_macaddr_get(buf->port, &e->src_addr);
 
                 // Prepare L3-Header
                 char tmp[16];
@@ -381,7 +378,7 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
                 ip->payload_len = htons(buf->pkt_len);
                 buf->pkt_len += sizeof(*ip)+sizeof(struct rte_ether_hdr);
                 buf->data_len += sizeof(*ip)+sizeof(struct rte_ether_hdr);
-                buf->ol_flags = PKT_TX_IPV6 | PKT_TX_TCP_CKSUM;
+                buf->ol_flags = RTE_MBUF_F_TX_IPV6 | RTE_MBUF_F_TX_TCP_CKSUM;
                 tcp->cksum = 0;
                 tcp->cksum = rte_ipv6_phdr_cksum(ip, buf->ol_flags);
             }
@@ -401,8 +398,8 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
             if (udp->dst_port == htons(53)) {
                 USER(buf)->udp = udp;
                 USER(buf)->ip = ip;
-                rte_ether_addr_copy(&e->s_addr, &e->d_addr);
-                rte_eth_macaddr_get(buf->port, &e->s_addr);
+                rte_ether_addr_copy(&e->src_addr, &e->dst_addr);
+                rte_eth_macaddr_get(buf->port, &e->src_addr);
                 udp->dst_port = udp->src_port;
                 udp->src_port = htons(53);
                 unsigned int tmp = ip->src_addr;
@@ -410,7 +407,7 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
                 ip->dst_addr = tmp;
                 ip->time_to_live = 0x40;
                 buf->hash.usr = 0x01;
-                buf->ol_flags = PKT_TX_IPV4 | PKT_TX_IP_CKSUM;
+                buf->ol_flags = RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM;
                 buf->l2_len = sizeof(struct rte_ether_hdr);
                 buf->l3_len = sizeof(struct rte_ipv4_hdr);
                 buf->l4_len = sizeof(struct rte_udp_hdr);
@@ -440,7 +437,7 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
                             out[i]->l2_len = sizeof(struct rte_ether_hdr);
                             rte_memcpy(ptr, e, sizeof(struct rte_ether_hdr));
                         }
-                        const uint16_t nb_tx = rte_eth_tx_burst(buf->port, id, out, nrpkt);
+                        rte_eth_tx_burst(buf->port, id, out, nrpkt);
                     }
                     buf->hash.usr = 0x00;
                 }
@@ -452,8 +449,8 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
             if (tcp->dst_port == htons(53)) {
 
                 // Prepare L2-Header
-                rte_ether_addr_copy(&e->s_addr, &e->d_addr);
-                rte_eth_macaddr_get(buf->port, &e->s_addr);
+                rte_ether_addr_copy(&e->src_addr, &e->dst_addr);
+                rte_eth_macaddr_get(buf->port, &e->src_addr);
 
                 // Prepare L3-Header
                 unsigned int tmp = ip->src_addr;
@@ -473,7 +470,7 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
                     tcp->recv_ack = ntohl(htonl(tcp->sent_seq)+1);
                     tcp->tcp_flags |= 0x10;
                     paylen = 0;
-                    buf->ol_flags = PKT_TX_IPV4 | PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM;
+                    buf->ol_flags = RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM;
                     buf->pkt_len = buf->data_len = 54;
                 } else if (tcp->tcp_flags & 0x10) {
                     int datalen = ntohs(ip->total_length)-ihl-(tcp->data_off>>2);
@@ -493,9 +490,9 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
                     tcp->recv_ack = ntohl(htonl(tcp->sent_seq)+datalen);
                     tcp->sent_seq = ack;
                     if (buf->data_len != 54)
-                        buf->ol_flags = PKT_TX_IPV4 | PKT_TX_IP_CKSUM | PKT_TX_TCP_SEG | PKT_TX_TCP_CKSUM;
+                        buf->ol_flags = RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_SEG | RTE_MBUF_F_TX_TCP_CKSUM;
                     else
-                        buf->ol_flags = PKT_TX_IPV4 | PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM;
+                        buf->ol_flags = RTE_MBUF_F_TX_IPV4 | RTE_MBUF_F_TX_IP_CKSUM | RTE_MBUF_F_TX_TCP_CKSUM;
                 } else {
                     return;
                 }

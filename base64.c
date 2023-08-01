@@ -40,7 +40,7 @@ int Base64decode_len(const char *bufcoded)
     return nbytesdecoded + 1;
 }
 
-int Base64decode(char *bufplain, const char *bufcoded)
+int Base64decode(char *bufplain, const unsigned char *bufcoded)
 {
     int nbytesdecoded;
     register const unsigned char *bufin;
@@ -93,10 +93,10 @@ int Base64encode_len(int len)
     return ((len + 2) / 3 * 4) + 1;
 }
 
-int Base64encode(char *encoded, const char *string, int len)
+int Base64encode(unsigned char *encoded, const char *string, int len)
 {
     int i;
-    char *p;
+    unsigned char *p;
 
     p = encoded;
     for (i = 0; i < len - 2; i += 3) {

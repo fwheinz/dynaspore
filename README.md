@@ -12,7 +12,7 @@ Experimental DNS server based on DPDK
 Libraries:
 - lua5.3
 - libmysqlclient
-- dpdk
+- dpdk (>21)
 - openssl (libcrypto, libssl)
 
 System:
@@ -20,7 +20,7 @@ System:
 - 20 x 1GB hugepages
 - iommu deactivated (kernel-commandline)
 
-Tested with: Debian 11.7 Bullseye
+Tested with: Debian 12 Bookworm, Ubuntu 22.04
 
 Compile and start with: *make run*
 

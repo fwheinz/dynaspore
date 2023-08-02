@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -169,7 +170,7 @@ static void mysql_insert_record(MYSQL *con, long domain_id, char *name,
     fields[4].buffer = &ttl;
     fields[4].buffer_length = sizeof (ttl);
 
-    bool isnull = prio < 0;
+    my_bool isnull = prio < 0;
     fields[5].buffer_type = MYSQL_TYPE_LONG;
     fields[5].buffer = &prio;
     fields[5].buffer_length = sizeof (prio);

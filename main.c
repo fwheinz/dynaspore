@@ -75,6 +75,12 @@ static volatile struct app_stats {
     } tx __rte_cache_aligned;
 } app_stats;
 
+#ifndef ETH_MQ_RX_RSS
+#define ETH_MQ_RX_RSS RTE_ETH_MQ_RX_RSS
+#define DEV_RX_OFFLOAD_IPV4_CKSUM RTE_ETH_RX_OFFLOAD_IPV4_CKSUM
+#define ETH_MQ_TX_NONE RTE_ETH_MQ_TX_NONE
+#endif
+
 static const struct rte_eth_conf port_conf_default = {
     .rxmode = {
         .mq_mode = ETH_MQ_RX_RSS,

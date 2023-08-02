@@ -148,7 +148,7 @@ struct zone *fetch_zone(const char *name, int create) {
 static int _walk_zones(struct zone *z, int (*cb)(struct zone *z, void *arg), void *arg, int depth, const char *prefix) {
     int ret = 0;
     int st = 0;
-    if (prefix && z->name)
+    if (prefix)
         st = strncmp(z->name, prefix, strlen(prefix));
     if (z) {
         if (st >= 0)

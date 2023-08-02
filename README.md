@@ -12,13 +12,17 @@ Experimental DNS server based on DPDK
 Libraries:
 - lua5.3
 - libmysqlclient
-- dpdk (>21)
+- dpdk (>=21)
 - openssl (libcrypto, libssl)
+
+Packages for Debian Bookworm:
+
+apt install libdpdk-dev liblua5.3-dev libssl-dev libcrypto-dev libmariadb-dev-compat
 
 System:
 - DPDK enabled 10G network device
 - 20 x 1GB hugepages
-- iommu deactivated (kernel-commandline)
+- iommu deactivated (kernel-commandline: iommu=off)
 
 Tested with: Debian 12 Bookworm, Ubuntu 22.04
 

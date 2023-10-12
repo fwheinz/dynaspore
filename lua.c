@@ -221,8 +221,6 @@ static void addkey(void *arg, struct dnskey *k, char *z) {
 }
 
 int datasource_keyload(lua_State *L) {
-    int ret = 0;
-
     if ((lua_gettop(L) != 2) || !lua_istable(L, 1))
         return 0;
 
@@ -245,7 +243,7 @@ int datasource_keyload(lua_State *L) {
         if (ds->prepare)
             ds->prepare(ds, L);
         lua_unlock();
-        ret += ds->keyload(ds, z, L, addkey);
+        ds->keyload(ds, z, L, addkey);
         lua_lock();
         if (ds->finish)
             ds->finish(ds, L);
@@ -259,7 +257,7 @@ int datasource_keyload(lua_State *L) {
             const char *z = lua_tostring(L, -1);
             lua_pop(L, 1);
             lua_unlock();
-            ret += ds->keyload(ds, z, L, addkey);
+            ds->keyload(ds, z, L, addkey);
             lua_lock();
         } while (1);
         ds->finish(ds, L);

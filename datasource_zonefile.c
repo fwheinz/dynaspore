@@ -67,22 +67,6 @@ static inline void skip_until_chars (char **_ptr, char *chars) {
     *_ptr = ptr;
 }
 
-static inline int iseof (char *ptr) {
-    if (!ptr || !*ptr)
-        return 1;
-    return 0;
-}
-
-static inline int iseol (char *ptr) {
-    if (iseof(ptr) || *ptr == '\r' || *ptr == '\n')
-        return 1;
-    return 0;
-}
-
-static inline void skipnl (char **_ptr) {
-    return skip_chars(_ptr, "\r\n");
-}
-
 #define NEWLINES "\r\n"
 #define WHITESPACE " \t"
 

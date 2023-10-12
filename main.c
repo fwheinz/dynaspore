@@ -33,7 +33,7 @@
 #define RX_RING_SIZE 256
 #define TX_RING_SIZE 512
 #define NUM_MBUFS ((64*1024)-1)
-//#define NUM_MBUFS ((32*1024)-1)
+#define MBUF_SIZE 65535
 #define MBUF_CACHE_SIZE 256
 #define BURST_SIZE 32
 
@@ -421,9 +421,6 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
                 USER(buf)->payload = payload;
                 int paylen = htons(ip->total_length) - ((char*)payload - (char*)ip);
                 USER(buf)->paylen = paylen;
-                buf->hash.usr = 0x02;
-//                return;
-                buf->hash.usr = 0x01;
                 paylen = answer_packet(payload, paylen, rte_pktmbuf_data_room_size(mbuf_pool)-RTE_PKTMBUF_HEADROOM-42);
                 buf->pkt_len = buf->data_len = ((char*)payload - (char*)ip)+paylen+14;
                 udp->dgram_len = htons(paylen+sizeof(struct rte_udp_hdr));
@@ -666,7 +663,7 @@ main(int argc, char *argv[])
 
     mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL",
         NUM_MBUFS, MBUF_CACHE_SIZE, 0,
-                65535,
+                MBUF_SIZE,
 //      RTE_MBUF_DEFAULT_BUF_SIZE,
         rte_socket_id());
     if (mbuf_pool == NULL)

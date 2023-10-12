@@ -27,7 +27,6 @@ int answer_packet(unsigned char *buf, int len, int maxlen) {
     int edns = 0, udpsize = 512, DO = 0, tc = 0;
     struct answerdata ad = {0, 0, 0, 0};
 
-    
     if (len < 12) // Minimum length for a DNS packet
         return -1;
 
@@ -380,7 +379,7 @@ static inline diptr_t _walktree(char *name, int nl, int typeid, struct answerdat
         DEBUG(3, "Comparing %s with %s (dd %d)\n", pos->name, name + nl - depth, deltadepth);
         // Check, if the new name part matches the name in the tree
         if (unlikely((depth > nl)
-               || (deltadepth && strncasecmp(pos->name, name + nl - depth, deltadepth))
+//               || (deltadepth && strncasecmp(pos->name, name + nl - depth, deltadepth))
         )
                 ) {
             pos = NULL; // Mismatch, no record found
@@ -416,7 +415,7 @@ static inline diptr_t _walktree(char *name, int nl, int typeid, struct answerdat
     if (pos && pos->nrrecords) { // We have entries for the requested name
         if (HASTYPE(pos, T_CNAME)) {       // Check if there is a CNAME entry
             pos = DICH(pos->ch[T_CNAME]);
-        } else if (HASTYPE(pos, typeid)) { // Check for the requested type
+        } else if (typeid > 0 && HASTYPE(pos, typeid)) { // Check for the requested type
             pos = DICH(pos->ch[typeid]);
         } else {                           // Otherwise return NODATA
             ad->rtype = RTYPE_NODATA;
@@ -427,6 +426,7 @@ static inline diptr_t _walktree(char *name, int nl, int typeid, struct answerdat
         return ad->soa;
     }
     ad->answer = pos;
+    ad->rtype = RTYPE_NORMAL; // Response type (assume normal response here)
 
     return pos;
 }

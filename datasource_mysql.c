@@ -102,12 +102,12 @@ static long mysql_get_zone_id(MYSQL *con, struct zone *z) {
         query[pos + 2] = '\0';
         st = mysql_query(con, query);
         if (st != 0) {
-            DEBUG(1, "mysql_get_zone_id: INSERT failed: %s", mysql_error(con));
+            DEBUG(1, "mysql_get_zone_id: INSERT failed: %s\n", mysql_error(con));
             return -1;
         }
         st = mysql_query(con, "SELECT LAST_INSERT_ID()");
         if (st != 0) {
-            DEBUG(1, "mysql_get_zone_id: LAST_INSERT_ID() failed: %s", mysql_error(con));
+            DEBUG(1, "mysql_get_zone_id: LAST_INSERT_ID() failed: %s\n", mysql_error(con));
             return -1;
         }
         res = mysql_use_result(con);
@@ -367,6 +367,19 @@ int datasource_mysql_prepare(struct datasource *ds, void *arg) {
         DEBUG(1, "%s: Error connecting: %s\n", ds->driver, mysql_error(con));
         mysql_close(con);
         return 0;
+    }
+
+    const char *mst = xl_getstring(arg, "max_statement_time");
+    if (mst) {
+        int max_statement_time = atoi(mst);
+        char query[1024];
+        snprintf(query, sizeof(query), "SET SESSION max_statement_time = %d", max_statement_time);
+        int st = mysql_query(con, query);
+        if (st != 0) {
+            DEBUG(1, "%s: Cannot set maximum statement time: %s\n", ds->driver, mysql_error(con));
+        } else {
+            DEBUG(1, "%s: Maximum statement time set to %ds\n", ds->driver, max_statement_time);
+        }
     }
 
     ds->priv = con;

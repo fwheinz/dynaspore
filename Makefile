@@ -13,6 +13,8 @@ all: dynaspore
 dynaspore: char2id.h $(OBJS)
 	$(CC) $(OBJS) $(LDFLAGS) -o $@
 
+$(OBJS): char2id.h
+
 char2id.h: gentable
 	./gentable $(BO) > char2id.h
 

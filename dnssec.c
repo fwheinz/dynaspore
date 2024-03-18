@@ -269,7 +269,7 @@ void sign_record(diptr_t rec, struct dnskey *key) {
     unsigned char **records = alloca((nrrec) * sizeof (unsigned char *));
     unsigned char **recordssorted = alloca((nrrec) * sizeof (unsigned char *));
     unsigned int origttl = 4000000000;
-    unsigned short type;
+    unsigned short type = 0;
     char *name = DI_GET(rec)->name;
     char *zonename = rec->zone->name;
 

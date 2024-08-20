@@ -231,7 +231,7 @@ static int ipv6_address_configured (char *ip) {
     lua_ipv6_address_transfer(ipv6_addresses, MAXADDRS);
 
     for (int i = 0; i < MAXADDRS; i++) {
-        if (memcpy(ipv6_addresses[i], ip, 16) == 0)
+        if (memcmp(ipv6_addresses[i], ip, 16) == 0)
             return 1;
     }
     return 0;

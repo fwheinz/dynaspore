@@ -19,9 +19,10 @@ int datasource_mysql_fetch_zones(struct datasource *ds, const char *name, void *
     if (name && !is_valid_dnsname(name))
         return 0;
 
-    char query[1024] = "SELECT DISTINCT records.name,records.type,records.content,records.ttl,records.prio,domains.name,domains.id FROM records LEFT JOIN domains ON domains.id=records.domain_id WHERE domains.id IS NOT NULL";
+//    char query[1024] = "SELECT DISTINCT records.name,records.type,records.content,records.ttl,records.prio,domains.name,domains.id FROM records LEFT JOIN domains ON domains.id=records.domain_id WHERE domains.id IS NOT NULL ";
+    char query[1024] = "SELECT records.name,records.type,records.content,records.ttl,records.prio,(select name from domains where domains.id=records.domain_id) as dname,records.domain_id as id FROM records WHERE 1=1";
     if (name && *name) {
-        sprintf(query + strlen(query), " AND domains.name = '%s'", name);
+        sprintf(query + strlen(query), " AND (select name from domains where domains.id=records.domain_id) = '%s'", name);
     }
     sprintf(query+strlen(query), " ORDER BY records.domain_id,records.name,records.type");
     mysql_query(con, query);
@@ -34,11 +35,15 @@ int datasource_mysql_fetch_zones(struct datasource *ds, const char *name, void *
     MYSQL_ROW row;
     struct zone *z = NULL;
     printf("Nr allocs before: %d (%lu bytes)\n", nralloc, bytesalloc);
+    int count = 0;
     while ((row = mysql_fetch_row(res))) {
+        if (!row[5]) continue;
+        count++;
+        if (count%100000 == 0) DEBUG(1, "%d records loaded...\n", count);
         if (!z || strcmp(z->name, row[5])) {
             z = fetch_zone(row[5], 1);
             if (!z) {
-                DEBUG(1, "Failed to create invalid zone %s\n", row[5]);
+                DEBUG(3, "Failed to create invalid zone %s\n", row[5]);
                 continue;
             }
             if (z->last_reload != now) {

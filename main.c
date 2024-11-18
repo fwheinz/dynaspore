@@ -37,9 +37,8 @@
 #define MBUF_CACHE_SIZE 256
 #define BURST_SIZE 32
 
-/* uncommnet below line to enable debug logs */
-/* #define DEBUG */
-//#define DEBUG
+/* uncomment below line to enable debug logs */
+// #define DEBUG
 
 #ifdef DEBUG
 #define LOG_LEVEL RTE_LOG_DEBUG
@@ -226,6 +225,13 @@ static int ipv4_address_configured (unsigned int ip) {
     return 0;
 }
 
+void printipv6 (unsigned char *ip) {
+	for (int i = 0; i < 16; i+=2) {
+		printf("%02hhx%02hhx:", ip[i], ip[i+1]);
+	}
+	printf("\n");
+}
+
 // Check, if the given IPv6 address is configured
 static int ipv6_address_configured (char *ip) {
     lua_ipv6_address_transfer(ipv6_addresses, MAXADDRS);
@@ -337,7 +343,7 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
                     rte_eth_macaddr_get(buf->port, (void*)payload+18);
 
                     icmp->icmp_cksum = rte_ipv6_udptcp_cksum(ip, icmp);
-                    buf->hash.usr = 0x01;
+                    buf->hash.usr = 0x00;
                 }
             }
         } else if (ip->proto == IPPROTO_UDP) {
@@ -358,7 +364,20 @@ static inline void handle_pkt (struct rte_mbuf *buf, int id) {
                 buf->l2_len = sizeof(struct rte_ether_hdr);
                 buf->l3_len = sizeof(struct rte_ipv6_hdr);
                 buf->l4_len = sizeof(struct rte_udp_hdr);
-                buf->hash.usr = 0x00;
+                buf->hash.usr = 0x01;
+                buf->ol_flags = RTE_MBUF_F_TX_IPV6 | RTE_MBUF_F_TX_IP_CKSUM;
+                buf->l2_len = sizeof(struct rte_ether_hdr);
+                buf->l3_len = sizeof(struct rte_ipv6_hdr);
+                buf->l4_len = sizeof(struct rte_udp_hdr);
+                void *payload = (void*)((unsigned char*)udp+sizeof(struct rte_udp_hdr));
+                USER(buf)->payload = payload;
+                int paylen = htons(ip->payload_len) - ((char*)payload - (char*)ip);
+                USER(buf)->paylen = paylen;
+                paylen = answer_packet(payload, paylen, rte_pktmbuf_data_room_size(mbuf_pool)-RTE_PKTMBUF_HEADROOM-42);
+                buf->pkt_len = buf->data_len = ((char*)payload - (char*)ip)+paylen+14;
+                udp->dgram_len = htons(paylen+sizeof(struct rte_udp_hdr));
+                ip->payload_len = htons(buf->pkt_len-14);
+                udp->dgram_cksum = 0;
             }
         } else if (ip->proto == IPPROTO_TCP) {
             // IPv6 TCP packet

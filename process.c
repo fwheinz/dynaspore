@@ -379,7 +379,7 @@ static inline diptr_t _walktree(char *name, int nl, int typeid, struct answerdat
         DEBUG(3, "Comparing %s with %s (dd %d)\n", pos->name, name + nl - depth, deltadepth);
         // Check, if the new name part matches the name in the tree
         if (unlikely((depth > nl)
-//               || (deltadepth && strncasecmp(pos->name, name + nl - depth, deltadepth))
+               || (deltadepth && strncasecmp(pos->name, name + nl - depth, deltadepth))
         )
                 ) {
             pos = NULL; // Mismatch, no record found

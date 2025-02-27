@@ -690,7 +690,6 @@ int parse_dnssec_key(int keyflags, const char *key, struct dnskey *ret) {
         return parse_rsa_key(keyflags, key, ret);
     } else {
         DEBUG(1, "Unsupported algorithm: %d\n", ret->algo);
-        x_free(ret);
         return 0;
     }
 }

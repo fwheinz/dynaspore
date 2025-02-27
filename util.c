@@ -163,7 +163,7 @@ unsigned char *name2lbl(unsigned char *target, const char *domain) {
     
     if (!strlen(domain)) {
         target[0] = '\0';
-        return target;
+        return target+1;
     }
     strcpy((char *) target + 1, domain);
     if (target[strlen((char*)target + 1)] == '.')

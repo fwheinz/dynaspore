@@ -1,12 +1,12 @@
 CC=gcc
 
-LIBS=mysqlclient libdpdk lua5.3 libcrypto libssl
+LIBS=mysqlclient libdpdk lua5.3 libcrypto libssl ldap
 
 WARN=-Wall -Wno-address-of-packed-member -Wno-deprecated-declarations
-CFLAGS = $$(pkg-config --cflags $(LIBS)) $(WARN) -O4 -falign-loops=4 -march=native -mtune=native -ggdb
+CFLAGS = $$(pkg-config --cflags $(LIBS)) $(WARN) -O4 -falign-loops=4 -march=native -mtune=native -ggdb -DLDAP_DEPRECATED
 LDFLAGS = -lpthread $$(pkg-config --libs $(LIBS))
 
-OBJS := main.o util.o buildtree.o process.o base64.o dnssec.o control.o zones.o lua.o datasource.o datasource_mysql.o datasource_zonefile.o datasource_axfr.o records.o benchmark.o
+OBJS := main.o util.o buildtree.o process.o base64.o dnssec.o control.o zones.o lua.o datasource.o datasource_mysql.o datasource_zonefile.o datasource_ldap.o datasource_axfr.o records.o benchmark.o
 
 all: dynaspore
 

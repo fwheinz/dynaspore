@@ -37,9 +37,9 @@ int datasource_mysql_fetch_zones(struct datasource *ds, const char *name, void *
     printf("Nr allocs before: %d (%lu bytes)\n", nralloc, bytesalloc);
     int count = 0;
     while ((row = mysql_fetch_row(res))) {
-        if (!row[5]) continue;
-        count++;
-        if (count%100000 == 0) DEBUG(1, "%d records loaded...\n", count);
+	if (!row[5]) continue;
+	count++;
+	if (count%100000 == 0) DEBUG(1, "%d records loaded...\n", count);
         if (!z || strcmp(z->name, row[5])) {
             z = fetch_zone(row[5], 1);
             if (!z) {

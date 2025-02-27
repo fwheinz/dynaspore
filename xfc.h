@@ -35,7 +35,21 @@ extern int nralloc;
 extern long bytesalloc;
 
 
-
+enum {
+	REC_A = 1,
+	REC_NS = 2,
+	REC_CNAME = 5,
+	REC_SOA = 6,
+	REC_PTR = 12,
+	REC_MX = 15,
+	REC_TXT = 16,
+	REC_AAAA = 28,
+	REC_SRV = 33,
+	REC_DS = 43,
+	REC_RRSIG = 46,
+	REC_NSEC = 47,
+	REC_DNSKEY = 48
+};
 
 #define LOGFP stderr
 #define DEBUG(x,y ...) do { if (DEBUGLEVEL >= x) { fprintf(LOGFP, y); } } while (0);
@@ -459,7 +473,7 @@ struct datasource {
 struct datasource *datasource_register(struct datasource *nds);
 struct datasource *datasource_find(const char *name);
 void datasource_init(void);
-extern struct datasource datasource_mysql, datasource_axfr;
+extern struct datasource datasource_mysql, datasource_axfr, datasource_ldap;
 const char *xl_getstring(void *context, char *key);
 int xl_getnumber(void *context, char *key, int *valid);
 void xl_error(void *context, char *error);

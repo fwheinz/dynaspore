@@ -71,7 +71,7 @@ int answer_packet(unsigned char *buf, int len, int maxlen) {
             edns = 1;
             udpsize = bp[3]*256 + bp[4];
             DO = bp[7]&0x80;
-            DEBUG(3, "Got EDNS record (UDPsize: %d, DNSSEC: %s)\n", udpsize, DO ? "yes" : "no");
+            DEBUG(3, "Got EDNS record (UDPsize: %d/%d, DNSSEC: %s)\n", udpsize, maxlen, DO ? "yes" : "no");
             if (maxlen > udpsize)
                 maxlen = udpsize;
             maxlen -= 11; // Reserve space for EDNS reply

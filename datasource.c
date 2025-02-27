@@ -35,4 +35,5 @@ struct datasource *datasource_find (const char *driver) {
 void datasource_init(void) {
 	datasource_register (&datasource_mysql);
 	datasource_register (&datasource_axfr);
+	datasource_register (&datasource_ldap);
 }

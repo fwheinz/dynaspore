@@ -176,7 +176,7 @@ int datasource_ldap_prepare(struct datasource *ds, void *arg) {
     const char *host = xl_getstring(arg, "hostname");
     const char *username = xl_getstring(arg, "username");
     const char *password = xl_getstring(arg, "password");
-    const char *dbname = xl_getstring(arg, "dbname");
+//    const char *dbname = xl_getstring(arg, "dbname");
 
     LDAP *ldap;
     int result = ldap_initialize(&ldap, host);

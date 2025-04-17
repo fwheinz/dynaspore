@@ -163,6 +163,46 @@ int create_mx_record_content (unsigned char *rbuf, const char *content, int prio
 	return ptr2 - rbuf;
 }
 
+int create_caa_record_content (unsigned char *rbuf, const char *content) {
+	const char *ptr = content;
+	unsigned char *rptr = rbuf;
+
+	while (*ptr && *ptr == ' ') ptr++;
+	int flags = atoi(content);
+	ptr = strchr(ptr, ' ');
+	if (!ptr)
+		return -1;
+
+	PUTCHAR(rptr) = flags; rptr++;
+
+	// Process tag
+	while (*ptr == ' ') ptr++;
+	char *ptr2 = strchr(ptr, ' ');
+	if (!ptr2)
+		return -1;
+	int taglen = ptr2 - ptr;
+	if (taglen > 255)
+		return -1;
+	PUTCHAR(rptr) = taglen; rptr++;
+	memcpy(rptr, ptr, taglen); rptr += taglen;
+
+	// Process value
+	ptr = ptr2;
+	while (*ptr == ' ') ptr++;
+	if (*ptr == '"') {
+		ptr2 = strchr(ptr+1, '"');
+		if (!ptr2)
+			return -1;
+		int valuelen = ptr2 - ptr + 1;
+		int l = get_character_string(ptr, valuelen, (char *)rptr, valuelen);
+		rptr += l;
+	} else {
+		return -1;
+	}
+
+	return rptr - rbuf;
+}
+
 int create_txt_record_content (unsigned char *rbuf, const char *content) {
 	unsigned char *dst = rbuf;
 
@@ -396,6 +436,7 @@ int create_rrsig_record_content (unsigned char *rbuf, const char *content) {
 	return rptr - rbuf;
 }
 
+
 int create_record_content (unsigned char *rbuf, int type, const char *content, int prio) {
 	switch (type) {
 		case  1: // A
@@ -424,6 +465,8 @@ int create_record_content (unsigned char *rbuf, int type, const char *content, i
 			return create_nsec_record_content(rbuf, content);
 		case 48: // DNSKEY
 			return create_dnskey_record_content(rbuf, content);
+		case 257: // CAA
+			return create_caa_record_content(rbuf, content);
 		default:
 			return -1;
 	}
@@ -573,6 +616,22 @@ int retrieve_mx_record_content (unsigned char *ptr, int type, int rdlength, char
 	if (ll < 0)
 		return 0;
 	snprintf(bp, len, "%d %s%s", priority, name, DOTS);
+
+	return strlen(bp);
+}
+
+int retrieve_caa_record_content (unsigned char *ptr, int type, int rdlength, char *bp, int len) {
+	*bp = '\0';
+	unsigned char flags = get_uchar(&ptr);
+	unsigned char taglen = get_uchar(&ptr);
+
+	char tag[256];
+	memcpy(tag, ptr, taglen); ptr += taglen;
+
+	char value[1024];
+	put_character_string(ptr, rdlength-2-taglen, value, sizeof(value));
+
+	snprintf(bp, len, "%d %s %s", flags, tag, value);
 
 	return strlen(bp);
 }
@@ -785,6 +844,9 @@ int retrieve_record_content(unsigned char *ptr, int type, int rdlength, char *bp
                         break;
 		case 48: // DNSKEY
 			return retrieve_dnskey_record_content (ptr, type, rdlength, bp, len);
+			break;
+		case 257: // CAA
+			return retrieve_caa_record_content (ptr, type, rdlength, bp, len);
 			break;
 		default:
 			return snprintf(bp, len, "NOTPARSED");

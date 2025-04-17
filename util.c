@@ -52,6 +52,8 @@ const char *type2typestr(int type) {
             return "TLSA";
         case 99:
             return "SPF";
+        case 257:
+            return "CAA";
     }
     return "UNK";
 }
@@ -93,6 +95,9 @@ int typestr2type(const char *type) {
     }
     if (typecmp(type, "CNAME")) {
         return 5;
+    }
+    if (typecmp(type, "CAA")) {
+        return 257;
     }
     if (typecmp(type, "SPF")) {
         return 99;
@@ -154,6 +159,8 @@ const char *inttype2typestr(int type) {
             return "NSEC";
         case T_DS:
             return "DS";
+        case T_CAA:
+            return "CAA";
     }
     return "UNK";
 }

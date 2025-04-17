@@ -438,6 +438,7 @@ void create_record_data (diptr_t di, const char *name, int type, unsigned int tt
 	unsigned char *origptr = ptr;
 	ptr = name2lbl(ptr, name);
 	int namelen = ptr - origptr;
+	if (namelen == 1) sz--;
 	PUTSHORT(ptr) = htons(type);         ptr+=2; // TYPE
 	PUTSHORT(ptr) = htons(0x0001);       ptr+=2; // CLASS IN
 	PUTINT  (ptr) = htonl(ttl);          ptr+=4; // TTL
@@ -447,7 +448,7 @@ void create_record_data (diptr_t di, const char *name, int type, unsigned int tt
 	DI_GET(di)->recordlen += datalen + 10 + namelen;
 	if (ptr-origptr != sz) {
 		printf("Error: %lu != %d\n", ptr-origptr, sz);
-		printf("Name: %s, namelen: %d, strlen: %lu\n", name, namelen, strlen(name));
+		printf("Name: '%s', namelen: %d, strlen: %lu, datalen: %u\n", name, namelen, strlen(name), datalen);
 		assert(ptr-origptr == sz);
 	}
 

@@ -178,7 +178,7 @@ static void _walk_zone(diptr_t node, void (*cb)(diptr_t di, diptr_t parent, int 
         newzonestart = 1;
     int nrrecords = 0;
     for (i = 0; i < sizeof (node->ch) / sizeof (node->ch[0]); i++) {
-        if (newzonestart && ISLABELSEP(i))
+        if (newzonestart && (ISLABELSEP(i) || i >= T_A))
             continue;
         if (DICHNULL(node->ch[i])) {
             if (i < T_A) {

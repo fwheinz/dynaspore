@@ -193,7 +193,8 @@ static void _walk_zone(diptr_t node, void (*cb)(diptr_t di, diptr_t parent, int 
             }
         }
     }
-    node->nrrecords = nrrecords;
+    if (!newzonestart)
+      node->nrrecords = nrrecords;
 }
 
 /*

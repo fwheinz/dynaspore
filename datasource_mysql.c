@@ -19,10 +19,11 @@ int datasource_mysql_fetch_zones(struct datasource *ds, const char *name, void *
     if (name && !is_valid_dnsname(name))
         return 0;
 
-//    char query[1024] = "SELECT DISTINCT records.name,records.type,records.content,records.ttl,records.prio,domains.name,domains.id FROM records LEFT JOIN domains ON domains.id=records.domain_id WHERE domains.id IS NOT NULL ";
-    char query[1024] = "SELECT records.name,records.type,records.content,records.ttl,records.prio,(select name from domains where domains.id=records.domain_id) as dname,records.domain_id as id FROM records WHERE 1=1";
+    char query[1024] = "SELECT DISTINCT records.name,records.type,records.content,records.ttl,records.prio,domains.name AS dname,domains.id FROM domains LEFT JOIN records ON domains.id=records.domain_id WHERE domains.id IS NOT NULL ";
+//    char query[1024] = "SELECT records.name,records.type,records.content,records.ttl,records.prio,(select name from domains where domains.id=records.domain_id) as dname,records.domain_id as id FROM records WHERE 1=1";
     if (name && *name) {
-        sprintf(query + strlen(query), " AND (select name from domains where domains.id=records.domain_id) = '%s'", name);
+//        sprintf(query + strlen(query), " AND (select name from domains where domains.id=records.domain_id) = '%s'", name);
+        sprintf(query + strlen(query), " AND domains.name = '%s'", name);
     }
     sprintf(query+strlen(query), " ORDER BY records.domain_id,records.name,records.type");
     mysql_query(con, query);

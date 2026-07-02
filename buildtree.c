@@ -66,8 +66,10 @@ void *x_calloc(size_t num, size_t size) {
 }
 
 void x_free(void *ptr) {
-    nralloc--;
-    rte_free(ptr);
+    if (ptr) {
+       nralloc--;
+       rte_free(ptr);
+    }
 }
 #else
 
@@ -97,8 +99,10 @@ void *x_calloc(size_t num, size_t size) {
 }
 
 void x_free(void *ptr) {
-    nralloc--;
-    free(ptr);
+    if (ptr) {
+      nralloc--;
+      free(ptr);
+    }
 }
 #endif
 

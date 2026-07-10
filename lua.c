@@ -115,8 +115,10 @@ int datasource_zoneload(lua_State *L) {
         if (!ds)
             return 0;
         lua_unlock();
-        if (ds->prepare)
-            ds->prepare(ds, L);
+        if (ds->prepare && !ds->prepare(ds, L)) {
+            lua_lock();
+            return 0;
+        }
         ret += ds->zoneload(ds, z, L);
         lua_lock();
         if (z) {

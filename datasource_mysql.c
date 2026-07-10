@@ -87,13 +87,13 @@ static long mysql_get_zone_id(MYSQL *con, struct zone *z) {
     query[pos + 1] = '\0';
     int st = mysql_query(con, query);
     if (st != 0) {
-        DEBUG(1, "mysql_get_zone_id: %s\n", mysql_error(con));
+        DEBUG(1, "mysql_get_zone_id 1: %s\n", mysql_error(con));
         return -1;
     }
 
     MYSQL_RES *res = mysql_use_result(con);
-    if (st != 0) {
-        DEBUG(1, "mysql_get_zone_id: %s\n", mysql_error(con));
+    if (!res) {
+        DEBUG(1, "mysql_get_zone_id 2: %s\n", mysql_error(con));
         return -1;
     }
 
@@ -117,6 +117,9 @@ static long mysql_get_zone_id(MYSQL *con, struct zone *z) {
             return -1;
         }
         res = mysql_use_result(con);
+        if (!res) {
+            return -1;
+        }
         row = mysql_fetch_row(res);
         if (!row) {
             mysql_free_result(res);
@@ -365,6 +368,10 @@ int datasource_mysql_save_keys(struct datasource *ds, struct zone *z, void *arg)
 
 int datasource_mysql_prepare(struct datasource *ds, void *arg) {
     MYSQL *con = mysql_init(NULL);
+    int five = 5, _300 = 300;
+    mysql_options(con, MYSQL_OPT_CONNECT_TIMEOUT, &five);
+    mysql_options(con, MYSQL_OPT_READ_TIMEOUT, &_300);
+    mysql_options(con, MYSQL_OPT_WRITE_TIMEOUT, &_300);
     const char *host = xl_getstring(arg, "hostname");
     const char *username = xl_getstring(arg, "username");
     const char *password = xl_getstring(arg, "password");

@@ -487,6 +487,8 @@ struct datasource {
     pthread_mutex_t mutex;
 };
 struct datasource *datasource_register(struct datasource *nds);
+int datasource_prepare (struct datasource *ds, void *arg);
+int datasource_finish (struct datasource *ds, void *arg);
 struct datasource *datasource_find(const char *name);
 void datasource_init(void);
 extern struct datasource datasource_mysql, datasource_axfr, datasource_ldap;

@@ -85,6 +85,30 @@ void xl_tablefunction(lua_State *L, const char *name, void *function) {
     lua_settable(L, -3);
 }
 
+char **xl_tabledata(lua_State *L, int *nr) {
+    char **ret = NULL;
+    int i = 0;
+    do {
+        lua_rawgeti(L, 2, i+1);
+        if (lua_type(L, -1) != LUA_TSTRING)
+            break;
+        i++;
+        ret = realloc(ret, sizeof(char *)*i);
+        ret[i-1] = strdup(lua_tostring(L, -1));
+        lua_pop(L, 1);
+    } while (1);
+
+    *nr = i;
+    return ret;
+}
+
+void xl_tabledatafree (char **data, int nr) {
+    for (int i = 0; i < nr; i++) {
+        free(data[i]);
+    }
+    free(data);
+}
+
 
 /***********************/
 /* Datasource handling */
@@ -115,11 +139,12 @@ int datasource_zoneload(lua_State *L) {
         if (!ds)
             return 0;
         lua_unlock();
-        if (ds->prepare && !ds->prepare(ds, L)) {
+        if (!datasource_prepare(ds, L)) {
             lua_lock();
             return 0;
         }
         ret += ds->zoneload(ds, z, L);
+        datasource_finish(ds, L);
         lua_lock();
         if (z) {
             struct zone *zone = fetch_zone(z, 0);
@@ -127,32 +152,26 @@ int datasource_zoneload(lua_State *L) {
         } else {
             reprocess_zone_datasource(dsname);
         }
-        lua_unlock();
-        if (ds->finish)
-            ds->finish(ds, L);
-        lua_lock();
     } else if (lua_type(L, 2) == LUA_TTABLE) {
-        int i = 1;
+        int nrzones;
+        char **zones = xl_tabledata(L, &nrzones);
+
         lua_unlock();
-        if (ds->prepare)
-            ds->prepare(ds, L);
-        lua_lock();
-        do {
-            lua_rawgeti(L, 2, i++);
-            if (lua_type(L, -1) != LUA_TSTRING)
-                break;
-            const char *z = lua_tostring(L, -1);
-            lua_pop(L, 1);
-            lua_unlock();
-            ret += ds->zoneload(ds, z, L);
+        if (!datasource_prepare(ds, L)) {
             lua_lock();
-            struct zone *zone = fetch_zone(z, 0);
-            reprocess_zone(zone);
-        } while (1);
-        lua_unlock();
-        if (ds->finish)
-            ds->finish(ds, L);
+            return 0;
+        }
+        for (int i = 0; i < nrzones; i++) {
+            ret += ds->zoneload(ds, zones[i], L);
+        }
+        datasource_finish(ds, L);
         lua_lock();
+        
+        for (int i = 0; i < nrzones; i++) {
+            struct zone *zone = fetch_zone(zones[i], 0);
+            reprocess_zone(zone);
+        }
+        xl_tabledatafree(zones, nrzones);
     } else {
         return 0;
     }
@@ -182,14 +201,13 @@ int datasource_zonesave(lua_State *L) {
     const char *zonename = lua_tostring(L, 2);
     struct zone *z;
     if (zonename && (z = fetch_zone(zonename, 0))) {
-        if (ds->prepare)
-            ds->prepare(ds, L);
-        int st = ds->zonesave(ds, z, L);
-        if (st > 0) {
-            snprintf(z->datasource, sizeof (z->datasource), "%s", dsname);
+	    if (datasource_prepare(ds, L)) {
+		    int st = ds->zonesave(ds, z, L);
+		    if (st > 0) {
+			    snprintf(z->datasource, sizeof (z->datasource), "%s", dsname);
+		    }
+            datasource_finish(ds, L);
         }
-        if (ds->finish)
-            ds->finish(ds, L);
         lua_pushnumber(L, 1);
         return 1;
     }
@@ -242,27 +260,30 @@ int datasource_keyload(lua_State *L) {
         DEBUG(1, "Loading keys for zone %s with driver %s\n", z, driver);
         if (!ds)
             return 0;
-        if (ds->prepare)
-            ds->prepare(ds, L);
         lua_unlock();
-        ds->keyload(ds, z, L, addkey);
-        lua_lock();
-        if (ds->finish)
-            ds->finish(ds, L);
-    } else if (lua_type(L, 2) == LUA_TTABLE) {
-        int i = 1;
-        ds->prepare(ds, L);
-        do {
-            lua_rawgeti(L, 2, i++);
-            if (lua_type(L, -1) != LUA_TSTRING)
-                break;
-            const char *z = lua_tostring(L, -1);
-            lua_pop(L, 1);
-            lua_unlock();
-            ds->keyload(ds, z, L, addkey);
+        if (!datasource_prepare(ds, L)) {
             lua_lock();
-        } while (1);
-        ds->finish(ds, L);
+            return 0;
+        }
+        ds->keyload(ds, z, L, addkey);
+        datasource_finish(ds, L);
+        lua_lock();
+    } else if (lua_type(L, 2) == LUA_TTABLE) {
+        int nrzones;
+        char **zones = xl_tabledata(L, &nrzones);
+
+        lua_unlock();
+        if (!datasource_prepare(ds, L)) {
+            lua_lock();
+            return 0;
+        }
+        for (int i = 0; i < nrzones; i++) {
+            DEBUG(1, "Loading keys for zone %s with driver %s\n", zones[i], driver);
+            ds->keyload(ds, zones[i], L, addkey);
+        }
+        datasource_finish(ds, L);
+        xl_tabledatafree(zones, nrzones);
+        lua_lock();
     } else {
         return 0;
     }
@@ -291,14 +312,14 @@ int datasource_keysave(lua_State *L) {
     const char *zonename = lua_tostring(L, 2);
     struct zone *z;
     if (zonename && (z = fetch_zone(zonename, 0))) {
-        if (ds->prepare)
-            ds->prepare(ds, L);
+        if (!datasource_prepare(ds, L)) {
+            return 0;
+        }
         int st = ds->keysave(ds, z, L);
         if (st > 0) {
             snprintf(z->datasource, sizeof (z->datasource), "%s", dsname);
         }
-        if (ds->finish)
-            ds->finish(ds, L);
+        datasource_finish(ds, L);
         lua_pushnumber(L, 1);
         return 1;
     }

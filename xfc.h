@@ -80,7 +80,7 @@ struct di {
     unsigned char depth;
     unsigned char type;
     unsigned char nrrecords;
-    unsigned char has_soa : 1, has_ns : 1, has_wc : 1, has_cname : 1, padding:4;
+    unsigned char has_soa : 1, has_ns : 1, has_wc : 1, has_cname : 1, mark : 1, padding : 3;
     dich_t ch[40 + (T_LAST - T_FIRST)];
     unsigned char *record, *shortrecord;
     int recordlen, shortrecordlen;
@@ -128,6 +128,8 @@ diptr_t find_nsec_record(struct zone *z, char *name);
 void zone_set(diptr_t di, struct zone *z);
 void zone_delete(struct zone *z);
 void zone_remove_records(struct zone *z, int type);
+void zone_mark_records(struct zone *z, int mark);
+void zones_unmark_by_datasource(char *dsname);
 void nsec_tree_free(struct zone *z);
 void dnstree_remove_zone(struct zone *z);
 void clear_record(diptr_t);

@@ -18,6 +18,15 @@ int datasource_ldap_fetch_zones(struct datasource *ds, const char *name, void *a
 	if (name && !is_valid_dnsname(name))
 		return 0;
 
+    char *dsname = xl_getstring(arg, "dsname");
+    if (!dsname) 
+        dsname = "unknown";
+    else {
+        zones_unmark_by_datasource(dsname);
+    }
+
+    printf("Refreshing %s\n", dsname);
+
 	LDAPMessage *search_result, *entry;
 	int paged = 1;
 	struct berval *cookie = NULL;
@@ -96,8 +105,15 @@ int datasource_ldap_fetch_zones(struct datasource *ds, const char *name, void *a
 						if (values != NULL) {
 							for (int i = 0; domains[i] != NULL; i++) {
 								for (int j = 0; values[j] != NULL; j++) {
-									if (strcmp(type, "SOA") == 0)
-										fetch_zone(domains[i], 1);
+									if (strcmp(type, "SOA") == 0) {
+										struct zone *z = fetch_zone(domains[i], 1);
+                                        strcpy(z->datasource, dsname);
+                                    }
+                                    diptr_t di = maketree(root, domains[i], type2id(typestr2type(type)), 1);
+                                    if (di && !di->mark) {
+                                        clear_record(di);
+                                        di->mark = 1;
+                                    }
 									create_record(domains[i], type, values[j], NULL, NULL);
 								}
 							}

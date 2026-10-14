@@ -82,6 +82,10 @@ int answer_packet(unsigned char *buf, int len, int maxlen) {
     buf[3] = buf[6] = buf[8] = buf[9] = buf[10] = buf[11] = 0;
     //  rtype = RTYPE_NXDOMAIN; di = NULL;
     do {
+        if (!ad.soa) {
+            buf[3] = 0x05; // Set NXDOMAIN or REFUSED
+        } else
+
         // Handle NXDOMAIN and NODATA
         if (ad.rtype == RTYPE_NXDOMAIN || ad.rtype == RTYPE_NODATA) {
             if (di) { // We have an SOA-record, so we are authoritative

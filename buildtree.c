@@ -511,9 +511,8 @@ void clear_record(diptr_t dip) {
         dip->up->nrrecords -= dip->nrrecords;
         ss.nrrecords -= dip->nrrecords;
     }
-    fix_parent(dip);
-    
     dip->recordlen = dip->shortrecordlen = dip->nrrecords = 0;
+    fix_parent(dip);
     x_free(dip->record); dip->record = NULL;
     x_free(dip->shortrecord); dip->shortrecord = NULL;
 }

@@ -166,6 +166,19 @@ int walk_zones(int (*cb)(struct zone *z, void *arg), void *arg) {
     return _walk_zones(zones, cb, arg, 0, NULL);
 }
 
+static int _zones_unmark_by_datasource (struct zone *z, void *arg) {
+    char *dsname = arg;
+    if (strcmp(z->datasource, dsname) == 0) {
+        zone_mark_records(z, 0);
+    }
+
+    return 0;
+}
+
+void zones_unmark_by_datasource(char *dsname) {
+    walk_zones(_zones_unmark_by_datasource, dsname);
+}
+
 int walk_zones_prefix(int (*cb)(struct zone *z, void *arg), void *arg, const char *prefix) {
     return _walk_zones(zones, cb, arg, 0, prefix);
 }
@@ -189,7 +202,8 @@ static void _walk_zone(diptr_t node, void (*cb)(diptr_t di, diptr_t parent, int 
                 _walk_zone(DICH(node->ch[i]), cb, args, depth + 1, callnodes, allzones);
             } else if (HASTYPE(node, i)) {
                 cb(DICH(node->ch[i]), node, i, args);
-                nrrecords += DICH(node->ch[i])->nrrecords;
+                if (DICH(node->ch[i]))
+                    nrrecords += DICH(node->ch[i])->nrrecords;
             }
         }
     }
@@ -236,6 +250,17 @@ void _zone_remove_records(diptr_t di, diptr_t parent, int subtree, void *args) {
 void zone_remove_records(struct zone *z, int type) {
     walk_zone(z->node, _zone_remove_records, &type, 0);
 }
+
+void _zone_mark_records(diptr_t di, diptr_t parent, int subtree, void *args) {
+    int mark = *((int *) args);
+
+    di->mark = mark;
+}
+
+void zone_mark_records(struct zone *z, int mark) {
+    walk_zone(z->node, _zone_mark_records, &mark, 0);
+}
+
 
 void zone_delete(struct zone *z) {
     z->active = 0;

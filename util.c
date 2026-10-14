@@ -366,6 +366,9 @@ void printdi(struct di *di) {
         } else
             printf(" ");
     }
+    if (di->has_soa) { printf(" has_soa"); }
+    if (di->has_ns) { printf(" has_ns"); }
+    if (di->has_wc) { printf(" has_wc"); }
     printf("\n");
 }
 

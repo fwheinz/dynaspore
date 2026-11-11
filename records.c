@@ -65,37 +65,44 @@ static int put_character_string (const unsigned char *data, int datalen, char *d
 	return pos;
 }
 
-static int get_character_string (const char *str, int strlen, char *dst, int dstlen) {
-	int restlen = strlen;
-	int pos = 0;
-	int i = 0;
+static int _get_character_string (const char *str, int strlen, char *dst, int dstlen) {
+    int restlen = strlen;
+    int pos = 0;
+    int i = 0;
+    int quoted = 1;
 
-	if (str[i] == '"') {
-		if (str[strlen-1] != '"')
-			return -1;
-		i++;
-		strlen--;
-	}
+    if (str[i] == '"') {
+       if (str[strlen-1] != '"') return -1;
+       i++;
+       strlen--;
+    }
 
-	for (; i < strlen; i++) {
-		if (!str[i])
-			break;
-		if (pos >= (dstlen-1))
-			return -1;
-		if (str[i] == '\\') {
-			if (restlen < 2)
-				return -1;
-			if (isdigit(str[i+1])) {
-				if ((restlen < 4) || !isdigit(str[i+2]) || !isdigit(str[i+3]))
-					return -1;
-				dst[pos++] = (str[i+1]-'0')*100+(str[i+2]-'0')*10+(str[i+3]-'0');
-				restlen -= 4;
-				i += 3;
-			} else {
+    for (; i < strlen; i++) {
+        if (!str[i]) break;
+        if (pos >= (dstlen-1)) return -1;
+
+        if (str[i] == '\\') {
+            if (restlen < 2) return -1;
+
+            if (isdigit(str[i+1])) {
+                if ((restlen < 4) || !isdigit(str[i+2]) || !isdigit(str[i+3]))
+                    return -1;
+                dst[pos++] = (str[i+1]-'0')*100+(str[i+2]-'0')*10+(str[i+3]-'0');
+                restlen -= 4;
+                i += 3;
+            } else {
 				dst[pos++] = str[i+1];
 				i++;
 				restlen -= 2;
 			}
+        } else if (str[i] == '"' && quoted) {
+            i++;
+            restlen-=2;
+            while (restlen > 0 && (str[i] == ' ' || str[i] == '\t')) {
+                i++;
+                restlen--;
+            }
+            if (restlen <= 0 || str[i] != '"') return -1;
 		} else {
 			dst[pos++] = str[i];
 			restlen--;
@@ -104,6 +111,14 @@ static int get_character_string (const char *str, int strlen, char *dst, int dst
 	dst[pos] = '\0';
 
 	return pos;
+}
+
+static int get_character_string (const char *str, int strlen, char *dst, int dstlen) {
+    int ret = _get_character_string (str, strlen, dst, dstlen);
+    if (ret == -1) {
+        DEBUG(4, "Error getting character string: #%s#\n", str);
+    }
+    return ret;
 }
 
 int create_a_record_content (unsigned char *rbuf, const char *content) {
